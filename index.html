@@ -1,0 +1,820 @@
+<!DOCTYPE html>
+<html lang="id" class="h-full bg-slate-950 text-slate-100">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Apify Data & Store Explorer</title>
+  
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Google Fonts Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          },
+          colors: {
+            apify: {
+              50: '#fff7ed',
+              100: '#ffedd5',
+              500: '#f97316',
+              600: '#ea580c',
+              700: '#c2410c',
+              800: '#9a3412',
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    ::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #0f172a;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #334155;
+      border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #475569;
+    }
+    .json-key { color: #38bdf8; }
+    .json-string { color: #4ade80; }
+    .json-number { color: #facc15; }
+    .json-boolean { color: #f472b6; }
+    .json-null { color: #94a3b8; }
+  </style>
+</head>
+<body class="h-full flex flex-col font-sans antialiased bg-slate-950 text-slate-100 overflow-x-hidden">
+
+  <!-- Top Navigation Header -->
+  <header class="border-b border-slate-800 bg-slate-900/90 backdrop-blur sticky top-0 z-50">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
+      
+      <!-- Brand Logo -->
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-apify-600 to-amber-500 flex items-center justify-center text-white font-bold shadow-lg shadow-apify-600/20">
+          <i class="fa-solid fa-cloud-arrow-down text-lg"></i>
+        </div>
+        <div>
+          <h1 class="font-bold text-lg leading-tight flex items-center gap-2">
+            Apify Data Viewer
+            <span class="text-xs font-normal px-2 py-0.5 rounded-full bg-slate-800 border border-slate-700 text-slate-300">Live API</span>
+          </h1>
+          <p class="text-xs text-slate-400">Key-Value Store & Dataset Explorer</p>
+        </div>
+      </div>
+
+      <!-- Live Endpoint Status Badge -->
+      <div class="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-800/80 border border-slate-700/80 text-xs">
+        <span id="statusIndicator" class="w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse"></span>
+        <span id="statusText" class="text-slate-300 font-medium">Connecting to Apify...</span>
+      </div>
+
+      <!-- Action Buttons Header -->
+      <div class="flex items-center gap-2">
+        <button onclick="fetchApifyData()" class="px-3.5 py-1.5 rounded-lg bg-apify-600 hover:bg-apify-500 text-white font-medium text-xs flex items-center gap-2 transition-all shadow-md shadow-apify-600/20 active:scale-95">
+          <i class="fa-solid fa-rotate-right" id="refreshIcon"></i>
+          <span>Reload API</span>
+        </button>
+        <button onclick="toggleApiModal()" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 font-medium text-xs flex items-center gap-1.5 transition-all">
+          <i class="fa-solid fa-key text-amber-400"></i>
+          <span class="hidden sm:inline">Config</span>
+        </button>
+      </div>
+
+    </div>
+  </header>
+
+  <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+
+    <!-- Endpoint Input Bar -->
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-xl">
+      <div class="flex flex-col lg:flex-row gap-3 items-stretch lg:items-center">
+        <div class="flex-1 flex items-center gap-2 bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5">
+          <i class="fa-solid fa-link text-slate-500 text-sm"></i>
+          <input type="text" id="apiEndpointInput" 
+            value="https://api.apify.com/v2/key-value-stores/PskpSU5gjt9GDvpYS/records/INPUT?token=apify_api_RgDnVtnawgVnR8tpLkeL5ndfhosKDI2dUlBl" 
+            class="bg-transparent border-none focus:outline-none text-xs sm:text-sm font-mono text-slate-200 w-full"
+            placeholder="Masukkan URL Apify API...">
+        </div>
+        <div class="flex items-center gap-2">
+          <button onclick="fetchApifyData()" class="flex-1 lg:flex-none px-4 py-2.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-xl text-xs font-semibold text-slate-200 flex items-center justify-center gap-2 transition-all">
+            <i class="fa-solid fa-bolt text-amber-400"></i>
+            Fetch Data
+          </button>
+          <button onclick="copyToClipboard(document.getElementById('apiEndpointInput').value)" class="p-2.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-xl text-slate-400 hover:text-slate-200 transition-all" title="Salin URL">
+            <i class="fa-regular fa-copy"></i>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Metrics Overview -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      
+      <!-- Card 1: Data Type -->
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 flex items-center gap-4 shadow-md hover:border-slate-700 transition-all">
+        <div class="p-3 bg-blue-500/10 text-blue-400 border border-blue-500/20 rounded-xl">
+          <i class="fa-solid fa-code-branch text-xl"></i>
+        </div>
+        <div>
+          <p class="text-xs text-slate-400 font-medium">Struktur Payload</p>
+          <h3 id="metricDataType" class="text-lg font-bold text-slate-100 mt-0.5">Mendeteksi...</h3>
+        </div>
+      </div>
+
+      <!-- Card 2: Count / Size -->
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 flex items-center gap-4 shadow-md hover:border-slate-700 transition-all">
+        <div class="p-3 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-xl">
+          <i class="fa-solid fa-layer-group text-xl"></i>
+        </div>
+        <div>
+          <p class="text-xs text-slate-400 font-medium">Jumlah Item / Keys</p>
+          <h3 id="metricItemCount" class="text-lg font-bold text-slate-100 mt-0.5">0</h3>
+        </div>
+      </div>
+
+      <!-- Card 3: Source Store -->
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 flex items-center gap-4 shadow-md hover:border-slate-700 transition-all">
+        <div class="p-3 bg-amber-500/10 text-amber-400 border border-amber-500/20 rounded-xl">
+          <i class="fa-solid fa-database text-xl"></i>
+        </div>
+        <div>
+          <p class="text-xs text-slate-400 font-medium">Store ID</p>
+          <h3 id="metricStoreId" class="text-sm font-mono font-semibold text-slate-200 truncate max-w-[150px]">PskpSU5gjt9GDvpYS</h3>
+        </div>
+      </div>
+
+      <!-- Card 4: Last Updated -->
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 flex items-center gap-4 shadow-md hover:border-slate-700 transition-all">
+        <div class="p-3 bg-purple-500/10 text-purple-400 border border-purple-500/20 rounded-xl">
+          <i class="fa-regular fa-clock text-xl"></i>
+        </div>
+        <div>
+          <p class="text-xs text-slate-400 font-medium">Terakhir Diperbarui</p>
+          <h3 id="metricLastSync" class="text-xs font-semibold text-slate-200 mt-1">-</h3>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Navigation Tabs & Toolbar -->
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl p-2 flex flex-col sm:flex-row items-center justify-between gap-4">
+      
+      <!-- Navigation Tabs -->
+      <div class="flex items-center gap-1 bg-slate-950 p-1 rounded-xl w-full sm:w-auto overflow-x-auto">
+        <button onclick="switchTab('cards')" id="tabBtn-cards" class="tab-btn px-4 py-2 rounded-lg text-xs font-semibold flex items-center gap-2 transition-all bg-slate-800 text-white shadow-sm">
+          <i class="fa-solid fa-grip"></i>
+          <span>Visual Cards</span>
+        </button>
+        <button onclick="switchTab('table')" id="tabBtn-table" class="tab-btn px-4 py-2 rounded-lg text-xs font-semibold flex items-center gap-2 transition-all text-slate-400 hover:text-slate-200">
+          <i class="fa-solid fa-table-list"></i>
+          <span>Data Table</span>
+        </button>
+        <button onclick="switchTab('config')" id="tabBtn-config" class="tab-btn px-4 py-2 rounded-lg text-xs font-semibold flex items-center gap-2 transition-all text-slate-400 hover:text-slate-200">
+          <i class="fa-solid fa-sliders"></i>
+          <span>Input / Config</span>
+        </button>
+        <button onclick="switchTab('json')" id="tabBtn-json" class="tab-btn px-4 py-2 rounded-lg text-xs font-semibold flex items-center gap-2 transition-all text-slate-400 hover:text-slate-200">
+          <i class="fa-solid fa-code"></i>
+          <span>Raw JSON</span>
+        </button>
+        <button onclick="switchTab('analytics')" id="tabBtn-analytics" class="tab-btn px-4 py-2 rounded-lg text-xs font-semibold flex items-center gap-2 transition-all text-slate-400 hover:text-slate-200">
+          <i class="fa-solid fa-chart-pie"></i>
+          <span>Analytics</span>
+        </button>
+      </div>
+
+      <!-- Controls & Search -->
+      <div class="flex items-center gap-2 w-full sm:w-auto justify-end px-1">
+        <div class="relative flex-1 sm:w-64">
+          <i class="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-slate-500 text-xs"></i>
+          <input type="text" id="searchInput" oninput="handleSearch()" placeholder="Cari data..." 
+            class="w-full bg-slate-950 border border-slate-800 rounded-xl pl-9 pr-3 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-slate-700">
+        </div>
+        
+        <!-- Export Dropdown -->
+        <button onclick="exportDataJSON()" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-xl text-xs font-medium text-slate-200 flex items-center gap-1.5 transition-all" title="Export JSON">
+          <i class="fa-solid fa-download text-xs text-apify-500"></i>
+          <span>JSON</span>
+        </button>
+        <button onclick="exportDataCSV()" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-xl text-xs font-medium text-slate-200 flex items-center gap-1.5 transition-all" title="Export CSV">
+          <i class="fa-solid fa-file-csv text-xs text-emerald-400"></i>
+          <span>CSV</span>
+        </button>
+      </div>
+
+    </div>
+
+    <!-- Content Display Container -->
+    <div class="min-h-[420px]">
+      
+      <!-- VIEW 1: VISUAL CARDS -->
+      <div id="view-cards" class="view-panel space-y-4">
+        <div id="cardsContainer" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <!-- Dynamically generated cards -->
+        </div>
+      </div>
+
+      <!-- VIEW 2: DATA TABLE -->
+      <div id="view-table" class="view-panel hidden bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-xl">
+        <div class="overflow-x-auto max-h-[600px]">
+          <table class="w-full text-left text-xs text-slate-300">
+            <thead id="tableHeader" class="bg-slate-950 text-slate-400 font-semibold uppercase border-b border-slate-800 sticky top-0 z-10">
+              <!-- Dynamically generated table header -->
+            </thead>
+            <tbody id="tableBody" class="divide-y divide-slate-800">
+              <!-- Dynamically generated table rows -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- VIEW 3: INPUT / CONFIG WORKBENCH -->
+      <div id="view-config" class="view-panel hidden bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-6">
+        <div>
+          <h2 class="text-base font-bold text-slate-100 flex items-center gap-2">
+            <i class="fa-solid fa-sliders text-amber-400"></i>
+            Apify Actor Input Parameters
+          </h2>
+          <p class="text-xs text-slate-400 mt-1">Konfigurasi input yang tersimpan pada Key-Value store ini.</p>
+        </div>
+
+        <div id="configFormContainer" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <!-- Dynamically populated config fields -->
+        </div>
+
+        <!-- Generated cURL Command -->
+        <div class="bg-slate-950 border border-slate-800 rounded-xl p-4 space-y-2">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-semibold text-slate-400">cURL Integration Command</span>
+            <button onclick="copyToClipboard(document.getElementById('curlCode').innerText)" class="text-xs text-apify-500 hover:text-apify-400 flex items-center gap-1">
+              <i class="fa-regular fa-copy"></i> Copy cURL
+            </button>
+          </div>
+          <pre id="curlCode" class="text-xs font-mono text-emerald-400 whitespace-pre-wrap break-all bg-slate-900/50 p-3 rounded-lg border border-slate-800/80">curl -X GET "https://api.apify.com/v2/key-value-stores/PskpSU5gjt9GDvpYS/records/INPUT?token=apify_api_RgDnVtnawgVnR8tpLkeL5ndfhosKDI2dUlBl"</pre>
+        </div>
+      </div>
+
+      <!-- VIEW 4: RAW JSON TREE -->
+      <div id="view-json" class="view-panel hidden bg-slate-900 border border-slate-800 rounded-2xl p-4">
+        <div class="flex items-center justify-between border-b border-slate-800 pb-3 mb-3">
+          <span class="text-xs font-mono text-slate-400">Payload JSON Inspector</span>
+          <button onclick="copyToClipboard(JSON.stringify(rawDataPayload, null, 2))" class="text-xs bg-slate-800 hover:bg-slate-700 text-slate-200 px-3 py-1 rounded-lg border border-slate-700 flex items-center gap-1.5">
+            <i class="fa-regular fa-copy"></i> Copy Raw JSON
+          </button>
+        </div>
+        <pre id="jsonViewer" class="text-xs font-mono overflow-auto max-h-[550px] p-4 bg-slate-950 rounded-xl border border-slate-800 text-slate-300"></pre>
+      </div>
+
+      <!-- VIEW 5: ANALYTICS -->
+      <div id="view-analytics" class="view-panel hidden grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-4">
+          <h3 class="text-sm font-bold text-slate-200">Distribusi Kategori / Key Data</h3>
+          <div class="relative h-64">
+            <canvas id="chartCategories"></canvas>
+          </div>
+        </div>
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-4">
+          <h3 class="text-sm font-bold text-slate-200">Tipe Nilai Data (Data Types)</h3>
+          <div class="relative h-64">
+            <canvas id="chartTypes"></canvas>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+  </main>
+
+  <!-- Toast Notification Container -->
+  <div id="toast" class="fixed bottom-5 right-5 transform translate-y-20 opacity-0 transition-all duration-300 z-50 bg-slate-900 border border-slate-700 text-slate-100 px-4 py-3 rounded-xl shadow-2xl flex items-center gap-3">
+    <i id="toastIcon" class="fa-solid fa-circle-check text-emerald-400 text-base"></i>
+    <span id="toastMsg" class="text-xs font-medium">Message</span>
+  </div>
+
+  <!-- Config Modal -->
+  <div id="apiModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-lg w-full p-6 space-y-5 shadow-2xl">
+      <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+        <h3 class="font-bold text-base text-slate-100 flex items-center gap-2">
+          <i class="fa-solid fa-gear text-apify-500"></i>
+          Pengaturan Apify Integration
+        </h3>
+        <button onclick="toggleApiModal()" class="text-slate-400 hover:text-slate-200 text-lg">&times;</button>
+      </div>
+
+      <div class="space-y-4 text-xs">
+        <div>
+          <label class="block font-medium text-slate-300 mb-1">Apify API Token</label>
+          <input type="text" id="inputToken" value="apify_api_RgDnVtnawgVnR8tpLkeL5ndfhosKDI2dUlBl" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 font-mono text-slate-200 focus:outline-none focus:border-slate-700">
+        </div>
+        <div>
+          <label class="block font-medium text-slate-300 mb-1">Store ID / Key-Value ID</label>
+          <input type="text" id="inputStoreId" value="PskpSU5gjt9GDvpYS" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 font-mono text-slate-200 focus:outline-none focus:border-slate-700">
+        </div>
+        <div>
+          <label class="block font-medium text-slate-300 mb-1">Record Key</label>
+          <input type="text" id="inputRecordKey" value="INPUT" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 font-mono text-slate-200 focus:outline-none focus:border-slate-700">
+        </div>
+      </div>
+
+      <div class="flex items-center justify-end gap-2 pt-2 border-t border-slate-800">
+        <button onclick="toggleApiModal()" class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-300">Batal</button>
+        <button onclick="applyApiSettings()" class="px-4 py-2 rounded-xl bg-apify-600 hover:bg-apify-500 text-xs font-semibold text-white">Simpan & Terapkan</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    /* Global Application State */
+    let rawDataPayload = null;
+    let filteredItems = [];
+    let activeTab = 'cards';
+    let chartInstanceCat = null;
+    let chartInstanceType = null;
+
+    // Default sample data fallback in case of CORS or network block on client side
+    const fallbackSampleData = {
+      title: "Apify E-Commerce Scraper Input & Sample Record",
+      searchQuery: "Laptop gaming high performance",
+      maxItems: 25,
+      proxyConfig: { useApifyProxy: true, apifyProxyGroups: ["RESIDENTIAL"] },
+      startUrls: [
+        { url: "https://www.tokopedia.com/search?q=laptop" },
+        { url: "https://www.shopee.co.id/search?keyword=laptop" }
+      ],
+      sampleOutputData: [
+        { id: "PROD-101", title: "Asus ROG Strix G16", price: 24990000, rating: 4.9, category: "Laptop", status: "In Stock", vendor: "Asus Official" },
+        { id: "PROD-102", title: "Lenovo Legion Pro 5", price: 22500000, rating: 4.8, category: "Laptop", status: "In Stock", vendor: "Lenovo Store" },
+        { id: "PROD-103", title: "MSI Raider GE78", price: 38000000, rating: 5.0, category: "Laptop", status: "Pre-order", vendor: "MSI Gaming ID" },
+        { id: "PROD-104", title: "Acer Predator Helios 16", price: 21000000, rating: 4.7, category: "Laptop", status: "In Stock", vendor: "Predator Official" },
+        { id: "PROD-105", title: "HP Omen 16", price: 19800000, rating: 4.6, category: "Laptop", status: "Limited", vendor: "HP Store" },
+        { id: "PROD-106", title: "Razer Blade 15", price: 35500000, rating: 4.9, category: "Laptop", status: "In Stock", vendor: "Razer Official" }
+      ]
+    };
+
+    window.onload = function() {
+      fetchApifyData();
+    };
+
+    async function fetchApifyData() {
+      const urlInput = document.getElementById('apiEndpointInput').value.trim();
+      const statusIndicator = document.getElementById('statusIndicator');
+      const statusText = document.getElementById('statusText');
+      const refreshIcon = document.getElementById('refreshIcon');
+
+      refreshIcon.classList.add('animate-spin');
+      statusIndicator.className = 'w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse';
+      statusText.innerText = 'Mengambil data...';
+
+      try {
+        const response = await fetch(urlInput, {
+          method: 'GET',
+          headers: {
+            'Accept': 'application/json'
+          }
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP Status ${response.status}: ${response.statusText}`);
+        }
+
+        const data = await response.json();
+        rawDataPayload = data;
+
+        statusIndicator.className = 'w-2.5 h-2.5 rounded-full bg-emerald-500';
+        statusText.innerText = 'Terhubung Live (200 OK)';
+        showToast('Data berhasil dimuat dari Apify API!', 'success');
+
+      } catch (err) {
+        console.warn('Gagal fetch live URL (CORS atau Network restriction):', err);
+        statusIndicator.className = 'w-2.5 h-2.5 rounded-full bg-blue-500';
+        statusText.innerText = 'Sample Mode (CORS Guarded)';
+        
+        // Use fallback data so the web app remains fully functional and interactive
+        rawDataPayload = fallbackSampleData;
+        showToast('Menggunakan Mode Pratinjau Sampel (CORS Guarded)', 'info');
+      } finally {
+        refreshIcon.classList.remove('animate-spin');
+        processPayload();
+      }
+    }
+
+    function processPayload() {
+      if (!rawDataPayload) return;
+
+      const typeEl = document.getElementById('metricDataType');
+      const countEl = document.getElementById('metricItemCount');
+      const syncEl = document.getElementById('metricLastSync');
+
+      syncEl.innerText = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+
+      // Determine payload structure
+      let displayItems = [];
+
+      if (Array.isArray(rawDataPayload)) {
+        typeEl.innerText = "Array (Dataset)";
+        displayItems = rawDataPayload;
+      } else if (typeof rawDataPayload === 'object' && rawDataPayload !== null) {
+        if (rawDataPayload.sampleOutputData && Array.isArray(rawDataPayload.sampleOutputData)) {
+          typeEl.innerText = "Apify Key-Value + Sample Output";
+          displayItems = rawDataPayload.sampleOutputData;
+        } else {
+          typeEl.innerText = "Key-Value Object";
+          // Convert key-value entries into item array for table/cards view
+          displayItems = Object.entries(rawDataPayload).map(([key, val]) => ({
+            paramKey: key,
+            paramValue: typeof val === 'object' ? JSON.stringify(val) : String(val),
+            rawType: typeof val
+          }));
+        }
+      } else {
+        typeEl.innerText = "Primitive Value";
+        displayItems = [{ value: String(rawDataPayload) }];
+      }
+
+      countEl.innerText = displayItems.length;
+      filteredItems = [...displayItems];
+
+      renderCardsView(filteredItems);
+      renderTableView(filteredItems);
+      renderConfigView(rawDataPayload);
+      renderJsonView(rawDataPayload);
+      renderAnalyticsView(filteredItems);
+    }
+
+    function renderCardsView(items) {
+      const container = document.getElementById('cardsContainer');
+      container.innerHTML = '';
+
+      if (!items || items.length === 0) {
+        container.innerHTML = `
+          <div class="col-span-full py-12 text-center text-slate-500 bg-slate-900 border border-slate-800 rounded-2xl">
+            <i class="fa-solid fa-folder-open text-3xl mb-2"></i>
+            <p class="text-sm">Tidak ada data ditemukan.</p>
+          </div>`;
+        return;
+      }
+
+      items.forEach((item, index) => {
+        const card = document.createElement('div');
+        card.className = "bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-lg hover:border-slate-700 transition-all flex flex-col justify-between space-y-3";
+
+        // Try extracting standard item attributes
+        const title = item.title || item.paramKey || item.name || item.id || `Item #${index + 1}`;
+        const subtitle = item.category || item.vendor || item.rawType || (item.price ? `Rp ${Number(item.price).toLocaleString('id-ID')}` : '');
+        const badgeText = item.status || (item.rating ? `★ ${item.rating}` : null);
+
+        let fieldsHTML = '';
+        Object.entries(item).forEach(([k, v]) => {
+          if (['title', 'name'].includes(k)) return;
+          const valFormatted = typeof v === 'object' ? JSON.stringify(v) : String(v);
+          fieldsHTML += `
+            <div class="flex justify-between items-center text-xs border-b border-slate-800/60 pb-1 font-mono">
+              <span class="text-slate-400 capitalize">${k}:</span>
+              <span class="text-slate-200 truncate max-w-[180px]" title="${valFormatted}">${valFormatted}</span>
+            </div>`;
+        });
+
+        card.innerHTML = `
+          <div>
+            <div class="flex items-start justify-between gap-2 mb-2">
+              <h4 class="text-sm font-bold text-slate-100 leading-snug line-clamp-2">${title}</h4>
+              ${badgeText ? `<span class="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-apify-500/10 border border-apify-500/20 text-apify-400 whitespace-nowrap">${badgeText}</span>` : ''}
+            </div>
+            ${subtitle ? `<p class="text-xs font-semibold text-emerald-400 mb-3">${subtitle}</p>` : ''}
+            <div class="space-y-1.5 mt-2">
+              ${fieldsHTML}
+            </div>
+          </div>
+          <div class="pt-2 flex justify-end">
+            <button onclick="copyToClipboard('${escapeString(JSON.stringify(item, null, 2))}')" class="text-[11px] text-slate-400 hover:text-slate-200 flex items-center gap-1">
+              <i class="fa-regular fa-copy"></i> Salin JSON
+            </button>
+          </div>
+        `;
+        container.appendChild(card);
+      });
+    }
+
+    function renderTableView(items) {
+      const header = document.getElementById('tableHeader');
+      const body = document.getElementById('tableBody');
+
+      header.innerHTML = '';
+      body.innerHTML = '';
+
+      if (!items || items.length === 0) {
+        body.innerHTML = `<tr><td colspan="10" class="p-8 text-center text-slate-500">Tidak ada data untuk ditampilkan.</td></tr>`;
+        return;
+      }
+
+      // Collect all keys from items
+      const keys = Array.from(new Set(items.flatMap(item => Object.keys(item))));
+
+      // Render Header
+      let headerRow = `<tr class="border-b border-slate-800">`;
+      keys.forEach(key => {
+        headerRow += `<th class="px-4 py-3 font-semibold text-slate-300 capitalize">${key}</th>`;
+      });
+      headerRow += `<th class="px-4 py-3 text-right">Action</th></tr>`;
+      header.innerHTML = headerRow;
+
+      // Render Rows
+      items.forEach(item => {
+        let row = `<tr class="hover:bg-slate-800/50 transition-colors">`;
+        keys.forEach(key => {
+          const val = item[key];
+          const valStr = val !== undefined ? (typeof val === 'object' ? JSON.stringify(val) : String(val)) : '-';
+          row += `<td class="px-4 py-2.5 text-slate-300 max-w-[200px] truncate" title="${valStr}">${valStr}</td>`;
+        });
+        row += `
+          <td class="px-4 py-2.5 text-right whitespace-nowrap">
+            <button onclick="copyToClipboard('${escapeString(JSON.stringify(item))}')" class="p-1.5 text-slate-400 hover:text-slate-100 transition-colors" title="Copy Item JSON">
+              <i class="fa-regular fa-copy"></i>
+            </button>
+          </td>
+        </tr>`;
+        body.innerHTML += row;
+      });
+    }
+
+    function renderConfigView(payload) {
+      const container = document.getElementById('configFormContainer');
+      container.innerHTML = '';
+
+      if (!payload || typeof payload !== 'object') {
+        container.innerHTML = `<p class="text-xs text-slate-500 col-span-full">Payload tidak memiliki format objek konfigurasi.</p>`;
+        return;
+      }
+
+      Object.entries(payload).forEach(([key, val]) => {
+        if (key === 'sampleOutputData') return;
+
+        const wrapper = document.createElement('div');
+        wrapper.className = "bg-slate-950 border border-slate-800 rounded-xl p-3.5 space-y-1.5";
+
+        const valStr = typeof val === 'object' ? JSON.stringify(val, null, 2) : String(val);
+
+        wrapper.innerHTML = `
+          <label class="block text-xs font-semibold text-slate-300 font-mono">${key}</label>
+          ${typeof val === 'object' 
+            ? `<textarea readonly class="w-full h-20 bg-slate-900 border border-slate-800 rounded-lg p-2 font-mono text-[11px] text-slate-300 focus:outline-none resize-none">${valStr}</textarea>`
+            : `<input type="text" readonly value="${valStr}" class="w-full bg-slate-900 border border-slate-800 rounded-lg px-2.5 py-1.5 font-mono text-xs text-slate-300 focus:outline-none">`
+          }
+        `;
+        container.appendChild(wrapper);
+      });
+    }
+
+    function renderJsonView(data) {
+      const viewer = document.getElementById('jsonViewer');
+      const jsonString = JSON.stringify(data, null, 2);
+      viewer.innerHTML = syntaxHighlightJson(jsonString);
+    }
+
+    function syntaxHighlightJson(json) {
+      json = json.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      return json.replace(/("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)/g, function (match) {
+        let cls = 'json-number';
+        if (/^"/.test(match)) {
+          if (/:$/.test(match)) {
+            cls = 'json-key';
+          } else {
+            cls = 'json-string';
+          }
+        } else if (/true|false/.test(match)) {
+          cls = 'json-boolean';
+        } else if (/null/.test(match)) {
+          cls = 'json-null';
+        }
+        return `<span class="${cls}">${match}</span>`;
+      });
+    }
+
+    function renderAnalyticsView(items) {
+      if (!items || items.length === 0) return;
+
+      const ctxCat = document.getElementById('chartCategories').getContext('2d');
+      const ctxType = document.getElementById('chartTypes').getContext('2d');
+
+      if (chartInstanceCat) chartInstanceCat.destroy();
+      if (chartInstanceType) chartInstanceType.destroy();
+
+      // Category distribution
+      const categoryCounts = {};
+      items.forEach(item => {
+        const cat = item.category || item.status || item.vendor || 'Lainnya';
+        categoryCounts[cat] = (categoryCounts[cat] || 0) + 1;
+      });
+
+      chartInstanceCat = new Chart(ctxCat, {
+        type: 'doughnut',
+        data: {
+          labels: Object.keys(categoryCounts),
+          datasets: [{
+            data: Object.values(categoryCounts),
+            backgroundColor: ['#ea580c', '#38bdf8', '#4ade80', '#facc15', '#a855f7', '#ec4899']
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { labels: { color: '#94a3b8', font: { family: 'Inter' } } } }
+        }
+      });
+
+      // Data types distribution
+      const typeCounts = { String: 0, Number: 0, Boolean: 0, Object: 0 };
+      items.forEach(item => {
+        Object.values(item).forEach(val => {
+          const t = typeof val;
+          if (t === 'string') typeCounts.String++;
+          else if (t === 'number') typeCounts.Number++;
+          else if (t === 'boolean') typeCounts.Boolean++;
+          else if (t === 'object') typeCounts.Object++;
+        });
+      });
+
+      chartInstanceType = new Chart(ctxType, {
+        type: 'bar',
+        data: {
+          labels: Object.keys(typeCounts),
+          datasets: [{
+            label: 'Jumlah Nilai',
+            data: Object.values(typeCounts),
+            backgroundColor: '#3b82f6'
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            x: { ticks: { color: '#94a3b8' }, grid: { color: '#1e293b' } },
+            y: { ticks: { color: '#94a3b8' }, grid: { color: '#1e293b' } }
+          },
+          plugins: { legend: { display: false } }
+        }
+      });
+    }
+
+    function handleSearch() {
+      const q = document.getElementById('searchInput').value.toLowerCase().trim();
+      if (!rawDataPayload) return;
+
+      let sourceArray = [];
+      if (Array.isArray(rawDataPayload)) {
+        sourceArray = rawDataPayload;
+      } else if (rawDataPayload.sampleOutputData) {
+        sourceArray = rawDataPayload.sampleOutputData;
+      } else if (typeof rawDataPayload === 'object') {
+        sourceArray = Object.entries(rawDataPayload).map(([k, v]) => ({ paramKey: k, paramValue: String(v) }));
+      }
+
+      if (!q) {
+        filteredItems = [...sourceArray];
+      } else {
+        filteredItems = sourceArray.filter(item => {
+          return Object.values(item).some(val => String(val).toLowerCase().includes(q));
+        });
+      }
+
+      renderCardsView(filteredItems);
+      renderTableView(filteredItems);
+    }
+
+    function switchTab(tabName) {
+      activeTab = tabName;
+
+      document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.className = 'tab-btn px-4 py-2 rounded-lg text-xs font-semibold flex items-center gap-2 transition-all text-slate-400 hover:text-slate-200';
+      });
+
+      const activeBtn = document.getElementById(`tabBtn-${tabName}`);
+      if (activeBtn) {
+        activeBtn.className = 'tab-btn px-4 py-2 rounded-lg text-xs font-semibold flex items-center gap-2 transition-all bg-slate-800 text-white shadow-sm';
+      }
+
+      document.querySelectorAll('.view-panel').forEach(panel => panel.classList.add('hidden'));
+      const targetPanel = document.getElementById(`view-${tabName}`);
+      if (targetPanel) targetPanel.classList.remove('hidden');
+
+      if (tabName === 'analytics') {
+        renderAnalyticsView(filteredItems);
+      }
+    }
+
+    function exportDataJSON() {
+      if (!rawDataPayload) return;
+      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(rawDataPayload, null, 2));
+      const downloadAnchor = document.createElement('a');
+      downloadAnchor.setAttribute("href", dataStr);
+      downloadAnchor.setAttribute("download", `apify_data_${Date.now()}.json`);
+      document.body.appendChild(downloadAnchor);
+      downloadAnchor.click();
+      downloadAnchor.remove();
+      showToast('Export JSON berhasil!', 'success');
+    }
+
+    function exportDataCSV() {
+      if (!filteredItems || filteredItems.length === 0) return;
+      const keys = Array.from(new Set(filteredItems.flatMap(i => Object.keys(i))));
+      let csvContent = "data:text/csv;charset=utf-8,";
+      csvContent += keys.join(",") + "\n";
+
+      filteredItems.forEach(item => {
+        const row = keys.map(k => {
+          let val = item[k] !== undefined ? item[k] : '';
+          if (typeof val === 'object') val = JSON.stringify(val);
+          return `"${String(val).replace(/"/g, '""')}"`;
+        }).join(",");
+        csvContent += row + "\n";
+      });
+
+      const encodedUri = encodeURI(csvContent);
+      const link = document.createElement("a");
+      link.setAttribute("href", encodedUri);
+      link.setAttribute("download", `apify_export_${Date.now()}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      showToast('Export CSV berhasil!', 'success');
+    }
+
+    function copyToClipboard(text) {
+      if (!text) return;
+      const textArea = document.createElement("textarea");
+      textArea.value = text;
+      document.body.appendChild(textArea);
+      textArea.select();
+      try {
+        document.execCommand('copy');
+        showToast('Teks berhasil disalin!', 'success');
+      } catch (err) {
+        showToast('Gagal menyalin teks', 'error');
+      }
+      document.body.removeChild(textArea);
+    }
+
+    function showToast(message, type = 'success') {
+      const toast = document.getElementById('toast');
+      const toastMsg = document.getElementById('toastMsg');
+      const toastIcon = document.getElementById('toastIcon');
+
+      toastMsg.innerText = message;
+      if (type === 'success') {
+        toastIcon.className = "fa-solid fa-circle-check text-emerald-400 text-base";
+      } else if (type === 'info') {
+        toastIcon.className = "fa-solid fa-circle-info text-blue-400 text-base";
+      } else {
+        toastIcon.className = "fa-solid fa-circle-exclamation text-rose-400 text-base";
+      }
+
+      toast.classList.remove('translate-y-20', 'opacity-0');
+      setTimeout(() => {
+        toast.classList.add('translate-y-20', 'opacity-0');
+      }, 3000);
+    }
+
+    function toggleApiModal() {
+      const modal = document.getElementById('apiModal');
+      modal.classList.toggle('hidden');
+    }
+
+    function applyApiSettings() {
+      const token = document.getElementById('inputToken').value.trim();
+      const storeId = document.getElementById('inputStoreId').value.trim();
+      const key = document.getElementById('inputRecordKey').value.trim();
+
+      const newUrl = `https://api.apify.com/v2/key-value-stores/${storeId}/records/${key}?token=${token}`;
+      document.getElementById('apiEndpointInput').value = newUrl;
+      document.getElementById('metricStoreId').innerText = storeId;
+
+      toggleApiModal();
+      fetchApifyData();
+    }
+
+    function escapeString(str) {
+      return str.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+    }
+  </script>
+</body>
+</html>
